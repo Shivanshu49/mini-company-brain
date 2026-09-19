@@ -1,0 +1,7 @@
+.venv
+.env
+.data_storage
+.cognee_system
+.cognee_cache
+__pycache__
+cache.json

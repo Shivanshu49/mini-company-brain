@@ -1,0 +1,5 @@
+cognee==1.6.0
+fastembed
+fastapi
+uvicorn
+python-dotenv
