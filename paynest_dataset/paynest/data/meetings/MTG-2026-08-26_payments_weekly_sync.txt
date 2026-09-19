@@ -1,0 +1,20 @@
+SOURCE_TYPE: meeting notes
+ID: MTG-2026-08-26
+TITLE: Payments Weekly Sync
+DATE: 2026-08-26
+ORGANIZER: Priya Sharma
+ATTENDEES: Priya Sharma, Rahul Verma, Neha Gupta, Ananya Iyer, Karan Mehta, Arjun Rao
+
+1. Status
+- PAY-231 is closed. RFC-014 is fully rolled out.
+- PAY-245 (settlement delays) was resolved by manually releasing payouts held by FG-R9. Arjun Rao opened PAY-252 for a festive-season allowlist.
+
+2. Diwali preparation
+Karan Mehta expects about 5x normal traffic during Diwali in October 2026.
+
+Decision:
+Priya Sharma declared a code freeze from 2026-10-15 to 2026-10-25 for refund-service, settlement-service, ledger-service, and fraud-guard.
+
+Action items:
+- Ananya Iyer: run a 5x load test (PAY-266) before 2026-10-10.
+- Karan Mehta: share the verified high-volume merchant list with Arjun Rao for PAY-252.

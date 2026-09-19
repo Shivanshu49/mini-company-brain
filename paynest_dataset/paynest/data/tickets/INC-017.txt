@@ -1,0 +1,18 @@
+SOURCE_TYPE: ticket (incident)
+{
+  "id": "INC-017",
+  "type": "incident",
+  "severity": "Sev1",
+  "title": "Refund backlog during Kosha Bank refund API outage",
+  "status": "Resolved",
+  "service": "refund-service",
+  "on_call": "Ananya Iyer",
+  "responders": ["Ananya Iyer", "Rahul Verma", "Priya Sharma"],
+  "started": "2026-09-03 14:10 IST",
+  "resolved": "2026-09-03 17:45 IST",
+  "impact": "The Kosha Bank refund API was degraded for about 3.5 hours. With the RFC-014 retry settings (3 retries, 2 second base delay), retries were exhausted in about 15 seconds and 1,240 refunds were marked FAILED.",
+  "resolution": "After Kosha Bank recovered, Rahul Verma ran the refund replay job for the 1,240 FAILED refunds.",
+  "root_cause": "The retry budget defined in RFC-014 is too short for a multi-hour bank outage.",
+  "follow_ups": ["MTG-2026-09-04 (incident review)", "PAY-260"],
+  "links": ["PAY-231", "RFC-014"]
+}

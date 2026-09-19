@@ -1,0 +1,17 @@
+SOURCE_TYPE: document
+ID: DOC-004
+TITLE: Service ownership and on-call escalation
+AUTHOR: Ananya Iyer
+DATE: 2026-07-01
+
+Service ownership:
+- refund-service: owner Rahul Verma, backup Neha Gupta
+- settlement-service: owner Neha Gupta, backup Rahul Verma
+- ledger-service: owner Neha Gupta, backup Ananya Iyer
+- fraud-guard: owner Arjun Rao, backup Priya Sharma
+
+On-call:
+Ananya Iyer leads the on-call rotation. Sev1 incidents are declared in the #incidents Slack channel and page the on-call engineer.
+
+Escalation path:
+on-call engineer -> service owner -> service backup -> Priya Sharma

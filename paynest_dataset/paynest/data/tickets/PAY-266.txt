@@ -1,0 +1,16 @@
+SOURCE_TYPE: ticket
+{
+  "id": "PAY-266",
+  "type": "task",
+  "title": "Diwali load test for settlement-service and refund-service at 5x traffic",
+  "status": "Open",
+  "priority": "High",
+  "service": "settlement-service",
+  "reporter": "Priya Sharma",
+  "assignee": "Ananya Iyer",
+  "created": "2026-08-27",
+  "due": "2026-10-10",
+  "description": "Karan Mehta expects 5x normal traffic during Diwali. Load test settlement-service and refund-service at 5x before the code freeze on 2026-10-15.",
+  "comments": [],
+  "links": ["MTG-2026-08-26"]
+}

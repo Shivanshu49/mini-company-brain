@@ -1,0 +1,19 @@
+SOURCE_TYPE: ticket
+{
+  "id": "PAY-252",
+  "type": "feature",
+  "title": "Festive-season merchant allowlist for fraud-guard rule FG-R9",
+  "status": "Blocked",
+  "priority": "High",
+  "service": "fraud-guard",
+  "reporter": "Arjun Rao",
+  "assignee": "Arjun Rao",
+  "created": "2026-08-19",
+  "due": "2026-10-14",
+  "blocked_by": "Waiting for the list of verified high-volume merchants from Karan Mehta",
+  "description": "Add an allowlist so verified merchants are not held by FG-R9 during festive sales. Must ship before the Diwali code freeze starting 2026-10-15.",
+  "comments": [
+    {"author": "Arjun Rao", "date": "2026-09-11", "text": "Still blocked. Rule change is ready; need the merchant list from Karan Mehta."}
+  ],
+  "links": ["PAY-245", "DOC-003", "MTG-2026-08-26"]
+}
