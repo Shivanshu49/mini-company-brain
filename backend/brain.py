@@ -1,25 +1,18 @@
-"""Cognee setup + grounded Q&A. ask(question) -> {answer, sources, path, conflicts}"""
-import asyncio
+"""Grounded Q&A over the Cognee Cloud dataset the pipeline fills. ask(question) -> {answer, sources, path, conflicts}"""
 import json
 import re
-from pathlib import Path
+import sys
+from concurrent.futures import ThreadPoolExecutor
 
-from dotenv import load_dotenv
+from pipeline import cognee_client as cognee
+from pipeline import config
 
-ROOT = Path(__file__).parent
-load_dotenv(ROOT / ".env", override=True)
-
-import cognee  # noqa: E402  (must import after .env is loaded)
-from cognee import SearchType  # noqa: E402
-
-cognee.config.data_root_directory(str(ROOT / ".data_storage"))
-cognee.config.system_root_directory(str(ROOT / ".cognee_system"))
-
-DATA = ROOT.parent / "paynest_dataset/paynest/data"  # eval/ is a sibling, never ingested
-DATASET = "paynest"
-ID = re.compile(r"\b((?:DOC|RFC|PAY|INC)-\d{3}|(?:MTG|SLACK)-\d{4}-\d{2}-\d{2})\b")
+DATA = config.DATA_DIR  # same folder the pipeline ingests; eval/ is a sibling, never ingested
+DATASET = config.COGNEE_DATASET
+ID = re.compile(r"(?<![A-Za-z0-9])((?:DOC|RFC|PAY|INC)-\d{3}|(?:MTG|SLACK)-\d{4}-\d{2}-\d{2})(?!\d)")
 TYPES = {"docs": "document", "tickets": "ticket", "meetings": "meeting", "slack": "slack"}
 REFUSAL = "Not found in company knowledge."
+NOISE_RELATIONS = {"made_from", "is_part_of"}  # Cognee's chunk/summary bookkeeping edges
 
 SYSTEM_PROMPT = f"""You are PayNest Brain, the company knowledge assistant for PayNest.
 Answer ONLY from the provided context. Never use outside knowledge and never guess.
@@ -33,25 +26,26 @@ Keep the answer under 130 words, in plain sentences."""
 
 
 def _index() -> dict[str, dict]:
-    """Source metadata from the file headers: id -> {id, type, title, date, body}."""
+    """Source metadata from the file headers: id -> {id, type, title, date, body}.
+    Rebuilt on every call so files the pipeline picked up since startup are citable."""
     idx = {}
     for f in sorted(DATA.glob("*/*.txt")):
-        text = f.read_text()
-        if f.parent.name == "tickets":  # JSON under a SOURCE_TYPE line
-            j = json.loads(text.split("\n", 1)[1])
-            meta = {"id": j["id"], "title": j["title"], "date": j.get("created") or j["started"][:10]}
-            fields = ("description", "impact", "resolution", "root_cause", "blocked_by")
-            body = [str(j[k]) for k in fields if k in j] + [c["text"] for c in j.get("comments", [])]
-        else:
-            head, _, rest = text.partition("\n\n")
-            h = dict(re.findall(r"^(\w+): (.+)$", head, re.M))
-            meta = {"id": h["ID"], "title": h.get("TITLE") or h.get("CHANNEL", ""), "date": h["DATE"]}
-            body = [rest]
-        idx[meta["id"]] = {**meta, "type": TYPES[f.parent.name], "body": "\n".join(body)}
+        try:
+            text = f.read_text()
+            if text.split("\n", 1)[1].lstrip().startswith("{"):  # tickets: JSON under a SOURCE_TYPE line
+                j = json.loads(text.split("\n", 1)[1])
+                meta = {"id": j["id"], "title": j["title"], "date": j.get("created") or j["started"][:10]}
+                fields = ("description", "impact", "resolution", "root_cause", "blocked_by")
+                body = [str(j[k]) for k in fields if k in j] + [c["text"] for c in j.get("comments", [])]
+            else:
+                head, _, rest = text.partition("\n\n")
+                h = dict(re.findall(r"^(\w+): (.+)$", head, re.M))
+                meta = {"id": h["ID"], "title": h.get("TITLE") or h.get("CHANNEL", ""), "date": h["DATE"]}
+                body = [rest]
+        except (IndexError, KeyError, ValueError):
+            continue  # file without the expected header: still searchable in Cognee, just not shown as a card
+        idx[meta["id"]] = {**meta, "type": TYPES.get(f.parent.name, "document"), "body": "\n".join(body)}
     return idx
-
-
-SOURCES = _index()
 
 
 def _words(s: str) -> set[str]:
@@ -66,48 +60,87 @@ def _snippet(body: str, text: str) -> str:
     return " ".join(s for s in sents if s in top)[:320]
 
 
+def _node(name: str) -> str:
+    """Chunk nodes are named after their raw text; show them as their document ID instead."""
+    m = ID.search(name)
+    return m.group(1) if m else re.sub(r"\s*\[[^\]]*\]$", "", name).strip()
+
+
 def _edges(context: str) -> list[dict]:
-    """Parse Cognee graph context lines like 'A --[relation]--> B' into edges."""
-    edges = []
-    for a, rel, b in re.findall(r"^\s*(.+?)\s*--\[?(.+?)\]?-->\s*(.+?)\s*$", context, re.M):
+    """Parse Cognee context lines 'A --[relation]--> B  (description)' into edges."""
+    edges, seen = [], set()
+    for a, rel, b in re.findall(r"^(.+?) --\[(.+?)\]--> (.+?)(?:\s{2}\(.*\))?$", context, re.M):
+        a, b = _node(a), _node(b)
+        if rel in NOISE_RELATIONS or a == b or max(len(a), len(b)) > 60 or (a, rel, b) in seen:
+            continue
+        seen.add((a, rel, b))
         edges.append({"source": a, "target": b, "label": rel.replace("_", " ")})
     return edges[:25]
 
 
-async def _search(q: str, kind: SearchType, **kw):
-    res = await asyncio.wait_for(cognee.search(query_text=q, query_type=kind, datasets=[DATASET], **kw), 60)
-    return "\n".join(str(r.search_result if hasattr(r, "search_result") else r) for r in res)
+def _text(results: list[dict]) -> str:
+    out = []
+    for r in results:
+        res = r.get("search_result", r) if isinstance(r, dict) else r
+        out.extend(res if isinstance(res, list) else [res])
+    return "\n".join(str(x) for x in out)
 
 
-async def ask(question: str) -> dict:
+def _answer(question: str) -> str:
+    kw = {"datasets": [DATASET], "system_prompt": SYSTEM_PROMPT, "include_references": True}
     try:
-        answer = await _search(question, SearchType.GRAPH_COMPLETION, system_prompt=SYSTEM_PROMPT)
+        return _text(cognee.search(question, "GRAPH_COMPLETION", **kw))
     except Exception:  # timeout or graph failure: plain vector RAG still gives a grounded answer
-        answer = await _search(question, SearchType.RAG_COMPLETION, system_prompt=SYSTEM_PROMPT)
-    answer = answer.strip()
+        return _text(cognee.search(question, "RAG_COMPLETION", **kw))
+
+
+def _context(question: str) -> str:
+    try:
+        return _text(cognee.search(question, "GRAPH_COMPLETION", datasets=[DATASET], only_context=True))
+    except Exception:
+        return ""
+
+
+def ask(question: str) -> dict:
+    with ThreadPoolExecutor(2) as pool:
+        answer_f, context_f = pool.submit(_answer, question), pool.submit(_context, question)
+        answer = answer_f.result().strip()
+
+    # include_references appends "Evidence:\n- chunk N of document <name> (...)"; keep the names, drop the block.
+    answer, _, evidence = answer.partition("\nEvidence:")
+    evidence_ids = ID.findall(evidence)
+    answer = answer.replace("‑", "-").replace("**", "")  # non-breaking hyphens break ID matching; UI is plain text
+    # Cognee's model sometimes cites with 【ID】 too: drop ones already cited in parentheses, convert the rest.
+    paren_cited = set(ID.findall(" ".join(re.findall(r"\([^)]*\)", answer))))
+    answer = re.sub(
+        r"\s*【\s*([^】]+?)\s*】",
+        lambda m: "" if set(ID.findall(m.group(1))) <= paren_cited and ID.search(m.group(1)) else f" ({m.group(1)})",
+        answer,
+    )
 
     conflicts = []
-    for old, new, note in re.findall(r"^OUTDATED:\s*(\S+)\s*\|\s*(\S+)\s*\|\s*(.+)$", answer, re.M):
-        conflicts.append({"outdated": old, "current": new, "note": note.strip()})
+    for line in re.findall(r"^OUTDATED:(.*)$", answer, re.M):
+        parts = [p.strip() for p in line.split("|")]
+        old, new = (ID.search(p) for p in (parts + ["", ""])[:2])
+        if old and new:
+            conflicts.append({"outdated": old.group(1), "current": new.group(1), "note": " | ".join(parts[2:]) or line.strip()})
     answer = re.sub(r"^OUTDATED:.*$", "", answer, flags=re.M).strip()
 
     if REFUSAL.lower().rstrip(".") in answer.lower():
         return {"answer": REFUSAL, "sources": [], "path": [], "conflicts": []}
 
-    try:
-        path = _edges(await _search(question, SearchType.GRAPH_COMPLETION, only_context=True))
-    except Exception:
-        path = []
+    path = _edges(context_f.result())
 
-    ids = list(dict.fromkeys(ID.findall(answer + " " + " ".join(c["note"] for c in conflicts))))
-    text = question + " " + answer
+    # Cited IDs first; fall back to Cognee's retrieved documents if the answer cited nothing.
+    cited = ID.findall(answer + " " + " ".join(c["outdated"] + " " + c["current"] + " " + c["note"] for c in conflicts))
+    ids = list(dict.fromkeys(cited or evidence_ids))
+    index, text = _index(), question + " " + answer
     sources = [
         {k: s[k] for k in ("id", "type", "title", "date")} | {"snippet": _snippet(s["body"], text)}
-        for s in (SOURCES.get(i) for i in ids) if s
+        for s in (index.get(i) for i in ids) if s
     ]
     return {"answer": answer, "sources": sources, "path": path, "conflicts": conflicts}
 
 
 if __name__ == "__main__":
-    import sys
-    print(json.dumps(asyncio.run(ask(" ".join(sys.argv[1:]))), indent=2))
+    print(json.dumps(ask(" ".join(sys.argv[1:])), indent=2))
