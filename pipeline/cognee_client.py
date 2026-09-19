@@ -72,8 +72,3 @@ def cognify(dataset: str, dataset_id: str, custom_prompt: str = "", poll_seconds
         if "ERRORED" in status:
             raise RuntimeError(f"cognify failed for dataset {dataset}: {status}")
     raise TimeoutError(f"cognify did not finish within {timeout_seconds}s")
-
-
-def search(query: str, search_type: str = "GRAPH_COMPLETION", **options) -> list:
-    """POST /search. options: datasets, system_prompt, only_context, include_references, top_k, ..."""
-    return _check(_client.post("/search", json={"query": query, "search_type": search_type, **options})).json()
