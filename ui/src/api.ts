@@ -17,20 +17,25 @@ export const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 export const ID_RE = /\b((?:DOC|RFC|PAY|INC)-\d{3}|(?:MTG|SLACK)-\d{4}-\d{2}-\d{2})\b/
 
 export async function ask(question: string): Promise<Answer> {
+  let r: Response
   try {
-    const r = await fetch(`${API}/ask`, {
+    r = await fetch(`${API}/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question }),
       signal: AbortSignal.timeout(90_000),
     })
-    if (!r.ok) throw new Error(`status ${r.status}`)
-    return await r.json()
   } catch {
+    // Only unreachable/timed-out backends fall back; HTTP errors below are real failures and must show.
     const s = SAMPLES[question] // MOCK: offline fallback for the demo questions
     if (s) return { ...s, sample: true }
-    throw new Error(`Couldn't get an answer from ${API}. Check that the backend is running, then ask again.`)
+    throw new Error(`Couldn't reach ${API}. Check that the backend is running, then ask again.`)
   }
+  if (!r.ok) {
+    const detail = await r.json().then(b => b.detail, () => null)
+    throw new Error(typeof detail === 'string' ? detail : `The backend returned an error (${r.status}). Try again.`)
+  }
+  return r.json()
 }
 
 export const health = () =>

@@ -1,9 +1,10 @@
 """FastAPI server: POST /ask, GET /health. Run: uvicorn api:app --port 8000"""
 import json
+from typing import Annotated
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, StringConstraints
 
 from brain import ROOT, SOURCES, ask
 
@@ -17,12 +18,12 @@ CACHE: dict = json.loads(CACHE_FILE.read_text()) if CACHE_FILE.exists() else {}
 
 
 class Question(BaseModel):
-    question: str = Field(min_length=3, max_length=500)
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
 
 
 @app.post("/ask")
 async def ask_endpoint(body: Question):
-    q = body.question.strip()
+    q = body.question
     if q in CACHE:
         return CACHE[q]
     try:

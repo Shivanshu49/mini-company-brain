@@ -67,7 +67,7 @@ export default function App() {
         <header className="top">
           <h1>PayNest Brain</h1>
           <span className={`status ${online ? 'on' : 'off'}`}>
-            {online === null ? 'Connecting' : online ? 'Knowledge base connected' : 'Backend offline, sample answers only'}
+            {online === null ? 'Connecting' : online ? 'Backend connected' : 'Backend offline, sample answers only'}
           </span>
         </header>
 
@@ -86,7 +86,8 @@ export default function App() {
 
           {turns.map((t, i) => (
             <section key={i} className={`turn ${i === sel ? 'selected' : ''}`} onClick={() => t.a && setSel(i)}>
-              <h3 className="q">{t.q}</h3>
+              {/* keyboard route to select this turn; its click bubbles to the section's onClick */}
+              <h3 className="q"><button aria-pressed={i === sel}>{t.q}</button></h3>
               {!t.a && !t.error && <p className="thinking">Searching docs, tickets, meetings and Slack</p>}
               {t.error && <p className="error">{t.error}</p>}
               {t.a && isRefusal(t.a) && (
@@ -125,6 +126,8 @@ export default function App() {
               onChange={e => setInput(e.target.value)}
               placeholder="Ask about services, decisions, incidents or owners"
               aria-label="Question"
+              minLength={3}
+              maxLength={500}
             />
             <button type="submit" disabled={busy || !input.trim()}>Ask</button>
           </form>
