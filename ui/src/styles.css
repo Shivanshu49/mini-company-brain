@@ -46,6 +46,7 @@ code, .cite { font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
 .turn { max-width: 68ch; padding: 4px 0 4px 18px; margin-bottom: 32px; border-left: 2px solid transparent; }
 .turn.selected { border-left-color: var(--ink); }
 .q { font-size: 17px; font-weight: 600; line-height: 1.4; margin-bottom: 10px; }
+.q button { background: none; border: 0; padding: 0; text-align: left; }
 .a p + p { margin-top: 12px; }
 .thinking, .sample { color: var(--muted); font-size: 14px; }
 .thinking::after { content: '...'; display: inline-block; width: 1.5em; overflow: hidden; vertical-align: bottom; animation: dots 1.2s steps(4) infinite; }
@@ -108,3 +109,4 @@ code, .cite { font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

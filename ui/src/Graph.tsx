@@ -29,7 +29,12 @@ export default function Graph({ edges, focus }: { edges: Edge[]; focus: string |
     <div ref={box} className="graph">
       {edges.length === 0 ? (
         <p className="empty">No relationship path for this answer.</p>
-      ) : width > 0 && (
+      ) : (
+        <ul className="sr-only" aria-label="Relationships">
+          {edges.map((e, i) => <li key={i}>{e.source} {e.label} {e.target}</li>)}
+        </ul>
+      )}
+      {edges.length > 0 && width > 0 && (
         <ForceGraph2D<{ id: string }, { label: string }>
           ref={fg}
           graphData={data}
