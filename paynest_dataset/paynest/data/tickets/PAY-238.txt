@@ -1,0 +1,18 @@
+SOURCE_TYPE: ticket
+{
+  "id": "PAY-238",
+  "type": "feature",
+  "title": "Refund status webhook for merchants",
+  "status": "Done",
+  "priority": "Medium",
+  "service": "refund-service",
+  "reporter": "Karan Mehta",
+  "assignee": "Rahul Verma",
+  "created": "2026-07-10",
+  "resolved": "2026-08-05",
+  "description": "Merchants want a webhook when a refund changes status (INITIATED, SUCCESS, FAILED) instead of polling the dashboard.",
+  "comments": [
+    {"author": "Rahul Verma", "date": "2026-08-05", "text": "Webhook live for all merchants. Retries webhook delivery 3 times."}
+  ],
+  "links": []
+}

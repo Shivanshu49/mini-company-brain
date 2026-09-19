@@ -1,0 +1,19 @@
+SOURCE_TYPE: ticket
+{
+  "id": "PAY-245",
+  "type": "bug",
+  "title": "T+1 settlements delayed for Tier-2 city merchants",
+  "status": "Done",
+  "priority": "High",
+  "service": "settlement-service",
+  "reporter": "Karan Mehta",
+  "assignee": "Neha Gupta",
+  "created": "2026-08-18",
+  "resolved": "2026-08-19",
+  "description": "About 300 merchants, mostly in Tier-2 cities like Kanpur, Indore, and Jaipur, did not receive T+1 settlements. 14 merchants escalated to support.",
+  "comments": [
+    {"author": "Neha Gupta", "date": "2026-08-18", "text": "settlement-service is healthy. The payouts are on hold by fraud-guard rule FG-R9."},
+    {"author": "Arjun Rao", "date": "2026-08-19", "text": "Confirmed. Independence Day sale spikes crossed the FG-R9 300% threshold. Payouts released manually. Follow-up in PAY-252."}
+  ],
+  "links": ["DOC-003", "PAY-252"]
+}

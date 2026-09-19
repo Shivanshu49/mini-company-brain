@@ -1,0 +1,19 @@
+SOURCE_TYPE: document
+ID: DOC-003
+TITLE: fraud-guard rules catalog
+AUTHOR: Arjun Rao
+DATE: 2026-08-01
+
+fraud-guard screens every merchant payout before settlement-service sends it to Kosha Bank. Held payouts go to manual review by the Risk team. Review SLA is 48 hours.
+
+Active rules:
+- FG-R1: Hold payouts above Rs 50,000 for merchants onboarded less than 7 days ago.
+- FG-R4: Hold payouts to a bank account that changed in the last 24 hours.
+- FG-R9: Hold a payout when the merchant's daily volume exceeds 300% of its 7-day average volume.
+
+FG-R9 history:
+FG-R9 went live on 2026-08-01. It was proposed by Arjun Rao and approved by Priya Sharma in the Risk and Compliance Sync on 2026-07-30 (MTG-2026-07-30), following an RBI audit observation about payouts to possible mule accounts showing sudden volume spikes.
+
+Known issue: FG-R9 can produce false positives during festive sales. See PAY-245 and PAY-252.
+
+Owner: Arjun Rao

@@ -1,0 +1,19 @@
+SOURCE_TYPE: document
+ID: DOC-007
+TITLE: Onboarding guide for new Payments engineers
+AUTHOR: Priya Sharma
+DATE: 2026-07-20
+
+Welcome to the Payments team at PayNest.
+
+Week 1:
+- Read DOC-001 (company overview), DOC-004 (service ownership), and DOC-006 (Kosha Bank integration).
+- Read all approved RFCs, starting with RFC-014.
+- Join Slack channels #payments-eng, #incidents, and #risk-alerts.
+- Shadow Ananya Iyer on the on-call rotation.
+
+Team rituals:
+- Payments Weekly Sync every Wednesday at 11:00 IST, run by Priya Sharma.
+- Risk and Compliance Sync at the end of every month, run by Arjun Rao.
+
+For questions about priorities, ask Karan Mehta. For technical questions, ask the service owner listed in DOC-004.

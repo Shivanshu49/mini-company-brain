@@ -1,0 +1,20 @@
+SOURCE_TYPE: meeting notes
+ID: MTG-2026-09-04
+TITLE: INC-017 incident review
+DATE: 2026-09-04
+ORGANIZER: Ananya Iyer
+ATTENDEES: Priya Sharma, Rahul Verma, Ananya Iyer, Neha Gupta
+
+Summary:
+On 2026-09-03 the Kosha Bank refund API was degraded for about 3.5 hours. refund-service exhausted its retries in about 15 seconds and 1,240 refunds were marked FAILED. Rahul Verma replayed them after Kosha Bank recovered.
+
+Discussion:
+The retry settings from RFC-014 were designed for short timeouts, not multi-hour outages.
+
+Decision:
+Priya Sharma approved increasing the refund maximum retries from 3 to 5 and the base delay from 2 seconds to 10 seconds. Refunds that exhaust retries will go to a dead-letter queue instead of being marked FAILED.
+
+Action items:
+- Rahul Verma: change refund.max_retries to 5 and base delay to 10 seconds; build the refund dead-letter queue.
+- Neha Gupta: investigate the duplicate refund entries found by ledger-recon (PAY-260).
+- Ananya Iyer: add an alert on the Kosha Bank refund API error rate.

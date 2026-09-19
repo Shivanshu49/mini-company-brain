@@ -1,0 +1,17 @@
+SOURCE_TYPE: ticket
+{
+  "id": "PAY-260",
+  "type": "bug",
+  "title": "Duplicate refund entries in ledger-service after INC-017",
+  "status": "In Progress",
+  "priority": "High",
+  "service": "ledger-service",
+  "reporter": "Ananya Iyer",
+  "assignee": "Neha Gupta",
+  "created": "2026-09-05",
+  "description": "The nightly ledger-recon job (DOC-005) found 87 refunds recorded twice in ledger-service after the INC-017 refund replay.",
+  "comments": [
+    {"author": "Neha Gupta", "date": "2026-09-10", "text": "Root cause: the 87 refunds had actually been processed by Kosha Bank before timing out (see DOC-006). The replay job sent them again. Kosha Bank rejected the duplicates using the refund_id idempotency key, but ledger-service still wrote a second entry because ledger-service does not deduplicate on refund_id. Fix in PR #497."}
+  ],
+  "links": ["INC-017", "RFC-014", "DOC-005", "DOC-006"]
+}

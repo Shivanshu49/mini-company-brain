@@ -1,0 +1,17 @@
+SOURCE_TYPE: document
+ID: DOC-006
+TITLE: Kosha Bank API integration notes
+AUTHOR: Rahul Verma
+DATE: 2026-06-20
+
+Refund API:
+- Timeout: 30 seconds
+- Rate limit: 50 requests per second for PayNest. Exceeding it returns HTTP 429.
+- Supports an idempotency key per request.
+
+Important: a refund request that times out on PayNest's side may still have been processed by Kosha Bank. Always check the Kosha Bank refund status API before treating a timed-out refund as failed.
+
+Payout API:
+Used by settlement-service for T+1 merchant payouts. Same rate limit as the refund API.
+
+Sandbox environment is available for testing both APIs.

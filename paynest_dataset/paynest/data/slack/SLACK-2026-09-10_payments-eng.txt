@@ -1,0 +1,10 @@
+SOURCE_TYPE: slack thread
+ID: SLACK-2026-09-10
+CHANNEL: #payments-eng
+DATE: 2026-09-10
+
+[12:10] Neha Gupta: PAY-260 update. Root cause found. 87 refunds that timed out during INC-017 had actually been processed by Kosha Bank. The replay job sent them again. Kosha Bank rejected the duplicates using refund_id, but ledger-service wrote a second entry because ledger-service does not deduplicate on refund_id. Fix is in PR #497.
+[12:18] Rahul Verma: Makes sense. RFC-014 only added idempotency on the Kosha Bank call, not in ledger-service.
+[12:25] Rahul Verma: Also, refund.max_retries is now 5 with a 10 second base delay in production, as approved in the INC-017 review. Refund dead-letter queue is in progress.
+[12:31] Ananya Iyer: Can PR #497 land before the Diwali code freeze?
+[12:33] Neha Gupta: Yes, target is 2026-09-18.

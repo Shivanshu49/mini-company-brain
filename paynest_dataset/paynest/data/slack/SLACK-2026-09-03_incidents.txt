@@ -1,0 +1,10 @@
+SOURCE_TYPE: slack thread
+ID: SLACK-2026-09-03
+CHANNEL: #incidents
+DATE: 2026-09-03
+
+[14:12] Ananya Iyer: Paging. Sev1 INC-017. Kosha Bank refund API is returning 503 errors. refund-service is marking refunds FAILED after 3 retries.
+[14:20] Rahul Verma: Confirmed. With the RFC-014 settings retries run out in about 15 seconds. Pausing new refund intake with flag refund_intake_pause.
+[14:35] Priya Sharma: Karan Mehta please handle merchant communication on the status page.
+[17:45] Ananya Iyer: Kosha Bank has recovered. Rahul Verma is running the replay job for 1,240 FAILED refunds.
+[18:30] Rahul Verma: Replay finished. Incident review tomorrow.
