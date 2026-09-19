@@ -1,11 +1,13 @@
 """Grounded Q&A over the Cognee Cloud dataset the pipeline fills. ask(question) -> {answer, sources, path, conflicts}"""
 import json
+import logging
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
-from pipeline import cognee_client as cognee
-from pipeline import config
+import httpx
+
+from backend import config
 
 DATA = config.DATA_DIR  # same folder the pipeline ingests; eval/ is a sibling, never ingested
 DATASET = config.COGNEE_DATASET
@@ -13,6 +15,7 @@ ID = re.compile(r"(?<![A-Za-z0-9])((?:DOC|RFC|PAY|INC)-\d{3}|(?:MTG|SLACK)-\d{4}
 TYPES = {"docs": "document", "tickets": "ticket", "meetings": "meeting", "slack": "slack"}
 REFUSAL = "Not found in company knowledge."
 NOISE_RELATIONS = {"made_from", "is_part_of"}  # Cognee's chunk/summary bookkeeping edges
+log = logging.getLogger("uvicorn.error")
 
 SYSTEM_PROMPT = f"""You are PayNest Brain, the company knowledge assistant for PayNest.
 Answer ONLY from the provided context. Never use outside knowledge and never guess.
@@ -23,6 +26,27 @@ Answer ONLY from the provided context. Never use outside knowledge and never gue
   OUTDATED: <older ID> | <newer ID> | <one sentence on what changed>
 - If the context does not answer the question, reply exactly: {REFUSAL}
 Keep the answer under 130 words, in plain sentences."""
+
+
+_cognee = httpx.Client(
+    base_url=f"{config.COGNEE_API_URL}/api/v1",
+    headers={"X-Api-Key": config.COGNEE_API_KEY},
+    timeout=httpx.Timeout(60.0, connect=15.0),
+    follow_redirects=True,
+)
+
+
+_groq = httpx.Client(
+    base_url="https://api.groq.com/openai/v1",
+    headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"},
+    timeout=httpx.Timeout(30.0, connect=10.0),
+) if config.GROQ_API_KEY else None
+
+
+def _search(query: str, search_type: str, **options) -> list:
+    r = _cognee.post("/search", json={"query": query, "search_type": search_type, "datasets": [DATASET], **options})
+    r.raise_for_status()
+    return r.json()
 
 
 def _index() -> dict[str, dict]:
@@ -87,29 +111,53 @@ def _text(results: list[dict]) -> str:
 
 
 def _answer(question: str) -> str:
-    kw = {"datasets": [DATASET], "system_prompt": SYSTEM_PROMPT, "include_references": True}
+    kw = {"system_prompt": SYSTEM_PROMPT, "include_references": True}
     try:
-        return _text(cognee.search(question, "GRAPH_COMPLETION", **kw))
+        return _text(_search(question, "GRAPH_COMPLETION", **kw))
     except Exception:  # timeout or graph failure: plain vector RAG still gives a grounded answer
-        return _text(cognee.search(question, "RAG_COMPLETION", **kw))
+        return _text(_search(question, "RAG_COMPLETION", **kw))
 
 
 def _context(question: str) -> str:
     try:
-        return _text(cognee.search(question, "GRAPH_COMPLETION", datasets=[DATASET], only_context=True))
+        return _text(_search(question, "GRAPH_COMPLETION", only_context=True))
     except Exception:
         return ""
 
 
+def _groq_answer(question: str, context: str) -> str:
+    r = _groq.post("/chat/completions", json={
+        "model": config.GROQ_MODEL,
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
+        ],
+    })
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
+
+
 def ask(question: str) -> dict:
-    with ThreadPoolExecutor(2) as pool:
-        answer_f, context_f = pool.submit(_answer, question), pool.submit(_context, question)
-        answer = answer_f.result().strip()
+    answer = None
+    if _groq:  # one Cognee retrieval feeds both the answer and the graph path
+        context = _context(question)
+        if context:
+            try:
+                answer = _groq_answer(question, context).strip()
+            except Exception as e:  # rate limit (429) or outage: fall back to Cognee's own LLM
+                log.warning("groq failed (%s); falling back to Cognee completion", e)
+    if answer is None:
+        with ThreadPoolExecutor(2) as pool:
+            answer_f, context_f = pool.submit(_answer, question), pool.submit(_context, question)
+            answer = answer_f.result().strip()
+            context = context_f.result()
 
     # include_references appends "Evidence:\n- chunk N of document <name> (...)"; keep the names, drop the block.
     answer, _, evidence = answer.partition("\nEvidence:")
     evidence_ids = ID.findall(evidence)
-    answer = answer.replace("‑", "-").replace("**", "")  # non-breaking hyphens break ID matching; UI is plain text
+    # Non-breaking hyphens/spaces break ID matching; UI is plain text.
+    answer = answer.replace("\u2011", "-").replace("\u202f", " ").replace("\u00a0", " ").replace("**", "")
     # Cognee's model sometimes cites with 【ID】 too: drop ones already cited in parentheses, convert the rest.
     paren_cited = set(ID.findall(" ".join(re.findall(r"\([^)]*\)", answer))))
     answer = re.sub(
@@ -129,7 +177,7 @@ def ask(question: str) -> dict:
     if REFUSAL.lower().rstrip(".") in answer.lower():
         return {"answer": REFUSAL, "sources": [], "path": [], "conflicts": []}
 
-    path = _edges(context_f.result())
+    path = _edges(context)
 
     # Cited IDs first; fall back to Cognee's retrieved documents if the answer cited nothing.
     cited = ID.findall(answer + " " + " ".join(c["outdated"] + " " + c["current"] + " " + c["note"] for c in conflicts))
