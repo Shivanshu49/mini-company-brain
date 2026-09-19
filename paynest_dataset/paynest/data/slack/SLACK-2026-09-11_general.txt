@@ -1,9 +1,0 @@
-SOURCE_TYPE: slack thread
-ID: SLACK-2026-09-11
-CHANNEL: #general
-DATE: 2026-09-11
-
-[09:30] Karan Mehta: Reminder: Diwali code freeze runs from 2026-10-15 to 2026-10-25 for refund-service, settlement-service, ledger-service, and fraud-guard. Ananya Iyer is running the 5x load test (PAY-266) before 2026-10-10.
-[09:41] Arjun Rao: @Karan Mehta PAY-252 is still blocked on the verified merchant list. It must ship before the freeze.
-[09:50] Karan Mehta: Still collecting it from the sales team. Will send by 2026-09-25.
-[09:52] Priya Sharma: Please do not slip this. FG-R9 will hold genuine Diwali payouts without the allowlist.

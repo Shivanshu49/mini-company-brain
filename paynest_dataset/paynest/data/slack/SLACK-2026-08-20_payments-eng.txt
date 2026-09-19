@@ -1,9 +1,0 @@
-SOURCE_TYPE: slack thread
-ID: SLACK-2026-08-20
-CHANNEL: #payments-eng
-DATE: 2026-08-20
-
-[11:05] Rahul Verma: RFC-014 is implemented in refund-service. PR #482 merged. Feature flag refund_backoff_v2 is at 10%.
-[11:12] Ananya Iyer: Refund failure rate alert (above 2%) is live on the refunds dashboard.
-[16:40] Rahul Verma: refund_backoff_v2 is at 100%. Refund failure rate dropped from 4% to 0.6%. Closing PAY-231 tomorrow.
-[16:45] Priya Sharma: Nice work Rahul Verma. Please keep refund-service changes documented in RFC-014.
