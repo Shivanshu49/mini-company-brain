@@ -2,3 +2,4 @@
 .venv/
 __pycache__/
 pipeline/state.db
+.claude/settings.local.json

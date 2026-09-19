@@ -13,7 +13,8 @@ export interface Answer {
   sample?: boolean // set by the UI when showing a mock answer
 }
 
-export const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+// Trailing slashes stripped: "https://x.onrender.com/" + "/ask" would hit "//ask", which 404s.
+export const API = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/+$/, '')
 export const ID_RE = /\b((?:DOC|RFC|PAY|INC)-\d{3}|(?:MTG|SLACK)-\d{4}-\d{2}-\d{2})\b/
 
 export async function ask(question: string): Promise<Answer> {
